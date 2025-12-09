@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard - Stroke System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body>
+
+<nav class="navbar navbar-dark bg-dark px-4">
+    <span class="navbar-brand">Stroke Patient Management</span>
+    <a href="/logout" class="btn btn-danger">Logout</a>
+</nav>
+
+<div class="container-fluid mt-5 px-4">
+
+    <h3 class="mb-4">Patient Records</h3>
+
+    <div class="row mb-3 align-items-center">
+        <div class="col-md-5">
+            <input type="text" id="searchInput" class="form-control" placeholder="Search Patient by ID">
+        </div>
+        <div class="col-md-7 text-end">
+            <a href="/add" class="btn btn-success">Add Patient</a>
+        </div>
+    </div>
+
+    <table class="table table-bordered table-hover align-middle">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Gender</th>
+                <th>Age</th>
+                <th>Hypertension</th>
+                <th>Heart Disease</th>
+                <th>Ever Married</th>
+                <th>Work Type</th>
+                <th>Residence</th>
+                <th>Glucose</th>
+                <th>BMI</th>
+                <th>Smoking</th>
+                <th>Stroke</th>
+                <th class="text-center">Actions</th>
+            </tr>
+        </thead>
+
+        <!-- ✅ HIDDEN INITIALLY TO PREVENT BLUR -->
+        <tbody id="tableBody" style="display:none;">
+        {% for p in patients %}
+        <tr>
+            <td>{{ p.get('id','') }}</td>
+            <td>{{ p.get('gender','') }}</td>
+            <td>{{ p.get('age','') }}</td>
+
+            <td>
+                {% if p.get('hypertension') == "1" %}
+                    <span class="badge bg-danger">Yes</span>
+                {% else %}
+                    <span class="badge bg-success">No</span>
+                {% endif %}
+            </td>
+
+            <td>
+                {% if p.get('heart_disease') == "1" %}
+                    <span class="badge bg-danger">Yes</span>
+                {% else %}
+                    <span class="badge bg-success">No</span>
+                {% endif %}
+            </td>
+
+            <td>{{ p.get('ever_married','') }}</td>
+            <td>{{ p.get('work_type','') }}</td>
+            <td>{{ p.get('Residence_type','') }}</td>
+            <td>{{ p.get('avg_glucose_level','') }}</td>
+            <td>{{ p.get('bmi','') }}</td>
+            <td>{{ p.get('smoking_status','') }}</td>
+
+            <td>
+                {% if p.get('stroke') == "1" %}
+                    <span class="badge bg-danger">Had Stroke</span>
+                {% else %}
+                    <span class="badge bg-success">No Stroke</span>
+                {% endif %}
+            </td>
+
+            <td class="text-center">
+                <a href="/edit/{{ p['id'] }}" class="btn btn-warning btn-sm">
+                    <i class="bi bi-pencil-square"></i>
+                </a>
+                <a href="/delete/{{ p['id'] }}" class="btn btn-danger btn-sm"
+                   onclick="return confirm('Delete this patient?')">
+                    <i class="bi bi-trash"></i>
+                </a>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="d-flex justify-content-between align-items-center mt-4">
+        <div id="recordInfo" class="fw-bold"></div>
+
+        <div class="d-flex align-items-center gap-3">
+            <select id="rowsPerPage" class="form-control" style="width:120px;">
+                <option value="5">5 rows</option>
+                <option value="10" selected>10 rows</option>
+                <option value="20">20 rows</option>
+                <option value="50">50 rows</option>
+            </select>
+
+            <nav>
+                <ul class="pagination mb-0" id="pagination"></ul>
+            </nav>
+        </div>
+    </div>
+
+</div>
+
+<!-- ✅ SCRIPT MUST BE AFTER TABLE -->
+<script>
+let searchInput = document.getElementById("searchInput");
+let rowsPerPageSelect = document.getElementById("rowsPerPage");
+let tableBody = document.getElementById("tableBody");
+let pagination = document.getElementById("pagination");
+let recordInfo = document.getElementById("recordInfo");
+
+// ✅ FIX: SAFE ROW CAPTURE
+let allRows = Array.from(document.querySelectorAll("#tableBody tr"));
+let currentPage = 1;
+
+function getFilteredRows() {
+    let query = searchInput.value.toLowerCase().trim();
+    if (!query) return allRows;
+    return allRows.filter(row => row.innerText.toLowerCase().includes(query));
+}
+
+function renderTable() {
+    let rowsPerPage = parseInt(rowsPerPageSelect.value);
+    let filteredRows = getFilteredRows();
+    let totalRecords = filteredRows.length;
+    let totalPages = Math.ceil(totalRecords / rowsPerPage);
+
+    if (currentPage > totalPages) currentPage = 1;
+    if (currentPage < 1) currentPage = 1;
+
+    let start = (currentPage - 1) * rowsPerPage;
+    let end = start + rowsPerPage;
+
+    tableBody.innerHTML = "";
+
+    filteredRows.slice(start, end).forEach(row => {
+        tableBody.appendChild(row);
+    });
+
+    let showingStart = totalRecords === 0 ? 0 : start + 1;
+    let showingEnd = Math.min(end, totalRecords);
+    recordInfo.innerText = `Showing ${showingStart}–${showingEnd} of ${totalRecords}`;
+
+    renderPagination(totalPages);
+
+    // ✅ SHOW AFTER PAGINATION READY
+    tableBody.style.display = "";
+}
+
+function renderPagination(totalPages) {
+    pagination.innerHTML = "";
+
+    let prev = document.createElement("li");
+    prev.className = "page-item " + (currentPage === 1 ? "disabled" : "");
+    prev.innerHTML = `<button class="page-link">‹</button>`;
+    prev.onclick = function () {
+        if (currentPage > 1) {
+            currentPage--;
+            renderTable();
+        }
+    };
+    pagination.appendChild(prev);
+
+    let startPage = Math.max(1, currentPage - 1);
+    let endPage = Math.min(totalPages, currentPage + 1);
+
+    for (let i = startPage; i <= endPage; i++) {
+        let li = document.createElement("li");
+        li.className = "page-item " + (i === currentPage ? "active" : "");
+        let btn = document.createElement("button");
+        btn.className = "page-link";
+        btn.innerText = i;
+        btn.onclick = function () {
+            currentPage = i;
+            renderTable();
+        };
+        li.appendChild(btn);
+        pagination.appendChild(li);
+    }
+
+    let next = document.createElement("li");
+    next.className = "page-item " + (currentPage === totalPages ? "disabled" : "");
+    next.innerHTML = `<button class="page-link">›</button>`;
+    next.onclick = function () {
+        if (currentPage < totalPages) {
+            currentPage++;
+            renderTable();
+        }
+    };
+    pagination.appendChild(next);
+}
+
+searchInput.addEventListener("input", function () {
+    currentPage = 1;
+    renderTable();
+});
+
+rowsPerPageSelect.addEventListener("change", function () {
+    currentPage = 1;
+    renderTable();
+});
+
+// ✅ INITIAL PAGINATION LOAD
+renderTable();
+</script>
+
+</body>
+</html>

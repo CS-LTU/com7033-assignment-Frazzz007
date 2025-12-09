@@ -18,6 +18,7 @@
                 <div class="card-body">
                     <form method="POST">
 
+                        <!-- ✅ CORRECT CSRF TOKEN (HIDDEN) -->
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                         <div class="mb-3">
